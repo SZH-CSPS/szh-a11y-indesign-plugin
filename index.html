@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!--
+  index.html
+  ----------
+  Panel UI for the Reading Order Preview UXP plugin.
+
+  Copyright (C) 2025 SZH/CSPS — Swiss Centre for Special Needs Education
+  Licensed under GNU GPL v3 — https://www.gnu.org/licenses/
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SZH-CSPS Accessibility Toolbox</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       HEADER
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <header class="panel-header">
+    <span class="panel-title" data-i18n="panelTitle">SZH-CSPS Accessibility Toolbox</span>
+    <button id="btn-refresh" class="btn-icon" data-i18n-title="btnRefresh" title="Refresh">
+      <!-- Refresh icon (SVG) -->
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.06-3.39L10 6h5V1l-1.35 1.35z"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       EMPTY STATE (shown when no doc / no articles)
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <div id="empty-state" class="empty-state">
+    <svg class="empty-icon" viewBox="0 0 48 48" fill="none">
+      <rect x="8" y="6" width="32" height="36" rx="3" stroke="currentColor" stroke-width="2"/>
+      <line x1="14" y1="16" x2="34" y2="16" stroke="currentColor" stroke-width="2"/>
+      <line x1="14" y1="22" x2="34" y2="22" stroke="currentColor" stroke-width="2"/>
+      <line x1="14" y1="28" x2="26" y2="28" stroke="currentColor" stroke-width="2"/>
+    </svg>
+    <p id="empty-message" class="empty-message">No document open.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION A — PAGE THUMBNAIL
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-thumbnail" class="panel-section">
+    <div class="section-header">
+      <span data-i18n="thumbnailTitle">Page preview</span>
+      <button id="btn-toggle-preview" class="btn-collapse" data-i18n-title="thumbnailToggleTitle" title="Hide preview" aria-expanded="true">▾</button>
+    </div>
+    <div id="thumbnail-container" class="thumbnail-container">
+      <!-- SVG is injected here by ui.js -->
+    </div>
+    <p class="hint" data-i18n="thumbnailHint">
+      Numbers show the Articles reading order.
+    </p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION B — SEQUENTIAL NAVIGATION
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-nav" class="panel-section">
+    <div class="section-header">
+      <span data-i18n="navTitle">Navigate</span>
+      <span id="nav-counter" class="nav-counter">— / —</span>
+    </div>
+    <div class="nav-buttons">
+      <button id="btn-prev" class="btn-nav" disabled data-i18n="navPrev">← Previous</button>
+      <button id="btn-next" class="btn-nav" disabled data-i18n="navNext">Next →</button>
+    </div>
+    <div class="nav-info-box">
+      <div id="nav-info"    class="nav-item-name">—</div>
+      <div id="nav-article" class="nav-article-name"></div>
+      <div id="nav-hint"    class="nav-hint"></div>
+    </div>
+
+
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION C — LAYER OVERLAY
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-layer" class="panel-section">
+    <div class="section-header">
+      <span data-i18n="layerTitle">Reading order layer</span>
+    </div>
+    <div class="layer-buttons">
+      <button id="btn-draw-layer" class="btn-primary" data-i18n="btnDrawLayer">
+        Draw reading order on layer
+      </button>
+      <button id="btn-delete-layer" class="btn-danger" data-i18n="btnDeleteLayer">
+        Delete reading order layer
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION D — FAST READING TOOLS
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-fast" class="panel-section">
+    <div class="section-header">
+      <span data-i18n="fastTitle">Fast reading Article/layer order</span>
+    </div>
+    <div class="fast-buttons">
+      <button id="btn-fast-reorder" class="btn-primary" data-i18n="btnFastReorder">
+        Reorder selected (bottom-up)
+      </button>
+      <button id="btn-fast-save-groups" class="btn-nav" data-i18n="btnFastSaveGroups">
+        Save groups
+      </button>
+      <button id="btn-fast-ungroup-all" class="btn-nav" data-i18n="btnFastUngroupAll">
+        Ungroup all
+      </button>
+      <button id="btn-fast-regroup" class="btn-nav" data-i18n="btnFastRegroup">
+        Re-group based on save
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       STATUS BAR
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <div id="status-msg" class="status" style="display:none;"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       CONFIRM DIALOG (used for layer deletion)
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <dialog id="confirm-dialog" class="confirm-dialog">
+    <p id="confirm-message" class="confirm-message"></p>
+    <div class="confirm-buttons">
+      <button id="confirm-cancel" class="btn-secondary"
+              onclick="document.getElementById('confirm-dialog').close('cancel')">
+        Cancel
+      </button>
+      <button id="confirm-ok" class="btn-danger"
+              onclick="document.getElementById('confirm-dialog').close('ok')">
+        Delete
+      </button>
+    </div>
+  </dialog>
+
+  <script src="main.js"></script>
+
+</body>
+</html>

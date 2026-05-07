@@ -1,0 +1,33 @@
+{
+  "manifestVersion": 5,
+  "id": "ch.csps.reading-order-preview",
+  "name": "SZH-CSPS Accessibility Toolbox",
+  "version": "1.0.0",
+  "main": "index.html",
+  "description": "Visualize and navigate the Articles panel reading order. Developed by SZH/CSPS.",
+  "publisher": "SZH/CSPS — Swiss Centre for Special Needs Education",
+
+  "host": [
+    {
+      "app": "ID",
+      "minVersion": "18.5"
+    }
+  ],
+
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "readingOrderPanel",
+      "label": {
+        "default": "SZH-CSPS Accessibility Toolbox"
+      },
+      "minimumSize": { "width": 260, "height": 400 },
+      "preferredSize": { "width": 320, "height": 600 },
+      "maximumSize": { "width": 800, "height": 2000 }
+    }
+  ],
+
+  "requiredPermissions": {
+    "allow": "all"
+  }
+}
