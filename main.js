@@ -486,6 +486,30 @@ function getSelectionAsPageItems() {
 }
 
 /**
+ * Returns the top reorderable target for z-order operations.
+ * If an item is inside nested groups, reorder the highest group ancestor
+ * so mixed grouped/ungrouped selections can be handled consistently.
+ */
+function getReorderTarget(item) {
+  if (!item || !item.isValid) return null;
+
+  let cur = item;
+  try {
+    while (cur && cur.parent && cur.parent.isValid) {
+      let pName = "";
+      try { pName = String(cur.parent); } catch (e) {}
+      if (pName.indexOf("[object Group]") === 0) {
+        cur = cur.parent;
+        continue;
+      }
+      break;
+    }
+  } catch (e) {}
+
+  return (cur && cur.isValid) ? cur : null;
+}
+
+/**
  * Reorder selected objects according to selection order.
  * First selected becomes visually lowest in z-order (bottom-up).
  * Uses bringForward/sendBackward when available for broad compatibility.
@@ -493,10 +517,30 @@ function getSelectionAsPageItems() {
 function reorderSelectedBottomUp() {
   if (!app.documents.length) return { reordered: 0, skipped: 0, error: t("noDocument") };
 
-  const selected = getSelectionAsPageItems();
-  if (selected.length < 2) return { reordered: 0, skipped: 0, error: t("fastNoSelection") };
+  const selectedRaw = getSelectionAsPageItems();
+  if (selectedRaw.length < 2) return { reordered: 0, skipped: 0, error: t("fastNoSelection") };
 
-  console.log("[ROP] reorderSelectedBottomUp: total selected =", selected.length);
+  // Normalize to reorder targets and deduplicate while preserving selection order.
+  const selected = [];
+  const seen = {};
+  selectedRaw.forEach(function (it) {
+    const target = getReorderTarget(it);
+    if (!target || !target.isValid || typeof target.id === "undefined") return;
+    const k = String(target.id);
+    if (seen[k]) return;
+    seen[k] = true;
+    selected.push(target);
+  });
+
+  if (selected.length < 2) {
+    return {
+      reordered: 0,
+      skipped: 0,
+      error: "Selection resolves to a single z-order target. Select at least 2 independent objects/groups."
+    };
+  }
+
+  console.log("[ROP] reorderSelectedBottomUp: raw selected =", selectedRaw.length, "targets =", selected.length);
   for (var di = 0; di < selected.length; di++) {
     var dit = selected[di];
     var dType = "?", dParent = "?", dLayer = "?";
