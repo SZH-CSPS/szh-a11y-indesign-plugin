@@ -23,7 +23,14 @@
 "use strict";
 
 const { entrypoints } = require("uxp");
-const { app } = require("indesign");
+const indesign = require("indesign");
+const { app } = indesign;
+const Justification = indesign.Justification || globalThis.Justification;
+const VerticalJustification = indesign.VerticalJustification || globalThis.VerticalJustification;
+const FirstBaseline = indesign.FirstBaseline || globalThis.FirstBaseline;
+const ColorModel = indesign.ColorModel || globalThis.ColorModel;
+const ColorSpace = indesign.ColorSpace || globalThis.ColorSpace;
+const ArrowHead = indesign.ArrowHead || globalThis.ArrowHead;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 1. I18N
@@ -183,7 +190,7 @@ function t(key, params) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 const BADGE_R    = 4;
-const ARROW_W    = 2;
+const ARROW_W    = 0.9;
 const ACCENT_RGB = [255, 69, 38];
 let _savedGroups = [];
 const ENABLE_ARTICLE_SYNC_AFTER_REORDER = true;
@@ -194,6 +201,35 @@ function normalizeBounds(bounds) {
   if (!isFinite(out[0]) || !isFinite(out[1]) || !isFinite(out[2]) || !isFinite(out[3])) return null;
   if (out[2] <= out[0] || out[3] <= out[1]) return null;
   return out;
+}
+
+/** Returns the intersection point of a ray (rect center -> target) with rect border. */
+function rectBorderPointTowards(rectBounds, targetX, targetY) {
+  const t = rectBounds[0], l = rectBounds[1], b = rectBounds[2], r = rectBounds[3];
+  const cx = (l + r) / 2;
+  const cy = (t + b) / 2;
+  const dx = targetX - cx;
+  const dy = targetY - cy;
+  if (dx === 0 && dy === 0) return [cx, cy];
+
+  const halfW = (r - l) / 2;
+  const halfH = (b - t) / 2;
+  const nx = Math.abs(dx) / Math.max(halfW, 0.0001);
+  const ny = Math.abs(dy) / Math.max(halfH, 0.0001);
+  const pad = 0.6; // keep endpoint off exact corners for cleaner joins
+
+  // Pick the dominant side first, then clamp on the other axis.
+  if (nx >= ny) {
+    const x = (dx >= 0) ? r : l;
+    const yRaw = cy + dy * (halfW / Math.max(Math.abs(dx), 0.0001));
+    const y = Math.max(t + pad, Math.min(b - pad, yRaw));
+    return [x, y];
+  }
+
+  const y = (dy >= 0) ? b : t;
+  const xRaw = cx + dx * (halfH / Math.max(Math.abs(dy), 0.0001));
+  const x = Math.max(l + pad, Math.min(r - pad, xRaw));
+  return [x, y];
 }
 
 /** Walks parent chain to find the Page containing a pageItem. */
@@ -957,6 +993,67 @@ function drawReadingOrderLayer() {
   try { paperSwatch = doc.swatches.itemByName("Paper"); } catch (e) {}
   try { blackSwatch = doc.swatches.itemByName("Black"); } catch (e) {}
 
+  let dashedStrokeStyle = null;
+  try {
+    dashedStrokeStyle = doc.strokeStyles.itemByName("Dashed");
+    if (!dashedStrokeStyle.isValid) throw new Error();
+  } catch (e) {
+    dashedStrokeStyle = null;
+  }
+
+  // Swatch rouge pour le texte des badges
+  let textRedSwatch = null;
+  try {
+    try {
+      const redColorDef = doc.colors.itemByName("_ROPText");
+      if (redColorDef && redColorDef.isValid) {
+        redColorDef.model = ColorModel.PROCESS;
+        redColorDef.space = ColorSpace.RGB;
+        redColorDef.colorValue = [210, 0, 0];
+      }
+    } catch (eDef) {}
+    textRedSwatch = doc.swatches.itemByName("_ROPText");
+    if (!textRedSwatch.isValid) throw new Error();
+  } catch (e) {
+    try {
+      doc.colors.add({
+        name: "_ROPText", model: ColorModel.PROCESS,
+        space: ColorSpace.RGB, colorValue: [210, 0, 0]
+      });
+      textRedSwatch = doc.swatches.itemByName("_ROPText");
+    } catch (e2) {}
+  }
+  if (!textRedSwatch || !textRedSwatch.isValid) {
+    try {
+      textRedSwatch = doc.swatches.itemByName("Red");
+      if (!textRedSwatch.isValid) throw new Error();
+    } catch (e) {
+      try { textRedSwatch = doc.swatches.itemByName("Magenta"); } catch (e2) {}
+    }
+  }
+
+  // Style de paragraphe dedie pour le numero
+  let badgeParaStyle = null;
+  try {
+    badgeParaStyle = doc.paragraphStyles.itemByName("CSPS-RED");
+    if (!badgeParaStyle.isValid) throw new Error();
+  } catch (e) {
+    try {
+      badgeParaStyle = doc.paragraphStyles.add({ name: "CSPS-RED" });
+    } catch (e2) {}
+  }
+  if (badgeParaStyle && badgeParaStyle.isValid) {
+    try { badgeParaStyle.basedOn = doc.paragraphStyles.itemByName("[Basic Paragraph]"); } catch (e) {}
+    try { badgeParaStyle.justification = Justification.CENTER_ALIGN; } catch (e) {}
+    try { badgeParaStyle.spaceBefore = 0; } catch (e) {}
+    try { badgeParaStyle.spaceAfter = 0; } catch (e) {}
+    try { badgeParaStyle.underline = false; } catch (e) {}
+    try { badgeParaStyle.strikeThru = false; } catch (e) {}
+    if (textRedSwatch && textRedSwatch.isValid) {
+      try { badgeParaStyle.fillColor = textRedSwatch; } catch (e) {}
+    }
+  }
+
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const b    = normalizeBounds(item.bounds); // [top, left, bottom, right]
@@ -987,29 +1084,57 @@ function drawReadingOrderLayer() {
         strokeColor: accentSwatch,
         strokeWeight: 1.2
       });
+      const ps = (label.length >= 2) ? 7.2 : 8.0;
+      // Meme zone que le rond, puis centrage via proprietes de texte/paragraphe
+      const txLeft = left - r;
+      const txTop = top - r;
       const lbl = pg.textFrames.add({
         itemLayer: layer,
-        geometricBounds: [top - r, left - r, top + r, left + r],
+        geometricBounds: [txTop, txLeft, txTop + (2 * r), txLeft + (2 * r)],
         fillColor: "None", strokeColor: "None"
       });
       lbl.contents = label;
-      lbl.textFramePreferences.verticalJustification = VerticalJustification.CENTER_ALIGN;
+      // Neutraliser les styles herites (supprime souligne et police du doc)
+      try { lbl.parentStory.appliedCharacterStyle = doc.characterStyles.itemByName("[None]"); } catch (e) {}
+      try { lbl.parentStory.appliedParagraphStyle = doc.paragraphStyles.itemByName("[Basic Paragraph]"); } catch (e) {}
       try { lbl.textFramePreferences.insetSpacing = [0, 0, 0, 0]; } catch (e) {}
-      try { lbl.textFramePreferences.firstBaselineOffset = FirstBaseline.ASCENT_OFFSET; } catch (e) {}
-      const para = lbl.paragraphs[0];
-      para.justification = Justification.CENTER_ALIGN;
-      para.pointSize = (label.length >= 2) ? 5.2 : 5.8;
-      try { para.leading = (label.length >= 2) ? 5.2 : 5.8; } catch (e) {}
-      try { para.underline = false; } catch (e) {}
-      try { para.strikeThru = false; } catch (e) {}
-      try {
-        para.fillColor = (blackSwatch && blackSwatch.isValid) ? blackSwatch : "Black";
-      } catch (e) {}
-      try {
-        const txt = lbl.texts[0];
-        txt.underline = false;
-        txt.strikeThru = false;
-      } catch (e) {}
+      try { lbl.textFramePreferences.verticalJustification = VerticalJustification.CENTER_ALIGN; } catch (e) {}
+      try { lbl.textFramePreferences.firstBaselineOffset = FirstBaseline.FIXED; } catch (e) {}
+      try { lbl.textFramePreferences.firstBaselineMinimum = r + ps * 0.35; } catch (e) {}
+      if (badgeParaStyle && badgeParaStyle.isValid) {
+        try { lbl.parentStory.appliedParagraphStyle = badgeParaStyle; } catch (e) {}
+        try { lbl.paragraphs.everyItem().appliedParagraphStyle = badgeParaStyle; } catch (e) {}
+      }
+      // Renforcer localement les proprietes critiques
+      try { lbl.paragraphs[0].justification = Justification.CENTER_ALIGN; } catch (e) {}
+      try { lbl.paragraphs[0].pointSize = ps; } catch (e) {}
+      try { lbl.paragraphs[0].leading = ps; } catch (e) {}
+      try { lbl.paragraphs[0].spaceBefore = 0; } catch (e) {}
+      try { lbl.paragraphs[0].spaceAfter = 0; } catch (e) {}
+      try { lbl.paragraphs[0].underline = false; } catch (e) {}
+      try { lbl.paragraphs[0].strikeThru = false; } catch (e) {}
+      try { lbl.paragraphs[0].strokeColor = "None"; } catch (e) {}
+      try { lbl.paragraphs[0].strokeWeight = 0; } catch (e) {}
+      if (textRedSwatch) {
+        try { lbl.paragraphs[0].fillColor = textRedSwatch; } catch (e) {}
+        try { lbl.texts[0].fillColor = textRedSwatch; } catch (e) {}
+        try { lbl.parentStory.fillColor = textRedSwatch; } catch (e) {}
+        try { lbl.insertionPoints[0].fillColor = textRedSwatch; } catch (e) {}
+        try { lbl.characters.everyItem().fillColor = textRedSwatch; } catch (e) {}
+        try { lbl.characters.everyItem().fillTint = 100; } catch (e) {}
+      } else {
+        try { lbl.paragraphs[0].fillColor = "Magenta"; } catch (e) {}
+        try { lbl.texts[0].fillColor = "Magenta"; } catch (e) {}
+        try { lbl.parentStory.fillColor = "Magenta"; } catch (e) {}
+        try { lbl.insertionPoints[0].fillColor = "Magenta"; } catch (e) {}
+        try { lbl.characters.everyItem().fillColor = "Magenta"; } catch (e) {}
+      }
+      try { lbl.texts[0].strokeColor = "None"; } catch (e) {}
+      try { lbl.texts[0].strokeWeight = 0; } catch (e) {}
+      try { lbl.characters.everyItem().strokeColor = "None"; } catch (e) {}
+      try { lbl.characters.everyItem().strokeWeight = 0; } catch (e) {}
+      try { lbl.characters.everyItem().underline = false; } catch (e) {}
+      try { lbl.characters.everyItem().strikeThru = false; } catch (e) {}
       itemDrawn = true;
     } catch (e) { drawErrors++; }
 
@@ -1022,14 +1147,45 @@ function drawReadingOrderLayer() {
       const nb = normalizeBounds(next.bounds);
       if (!nb) continue;
       try {
-        const x1 = (left + right) / 2,   y1 = (top + bottom) / 2;
-        const x2 = (nb[1] + nb[3]) / 2,  y2 = (nb[0] + nb[2]) / 2;
+        const x1c = (left + right) / 2,   y1c = (top + bottom) / 2;
+        const x2c = (nb[1] + nb[3]) / 2,  y2c = (nb[0] + nb[2]) / 2;
+        const p1 = rectBorderPointTowards(b, x2c, y2c);
+        const p2 = rectBorderPointTowards(nb, x1c, y1c);
+        const x1 = p1[0], y1 = p1[1];
+        const x2 = p2[0], y2 = p2[1];
+
         const line = pg.graphicLines.add({
           itemLayer: layer,
+          geometricBounds: [Math.min(y1, y2), Math.min(x1, x2), Math.max(y1, y2), Math.max(x1, x2)],
           strokeColor: accentSwatch, strokeWeight: ARROW_W
         });
-        line.paths[0].entirePath = [[x1, y1], [x2, y2]];
-      } catch (e) { drawErrors++; }
+        try {
+          if (dashedStrokeStyle && dashedStrokeStyle.isValid) {
+            line.strokeType = dashedStrokeStyle;
+          }
+        } catch (eStyle) {}
+        try {
+          if (ArrowHead && ArrowHead.TRIANGLE) {
+            line.rightArrowHead = ArrowHead.TRIANGLE;
+          } else {
+            line.rightArrowHead = "Triangle";
+          }
+          line.rightArrowHeadScale = 60;
+        } catch (eHead) {
+          try {
+            line.endArrowHead = "Triangle";
+            line.endArrowHeadScale = 60;
+          } catch (eHead2) {}
+        }
+        try {
+          line.paths[0].entirePath = [[x1, y1], [x2, y2]];
+        } catch (ePath) {
+          // Some InDesign contexts expect swapped coordinate tuples.
+          line.paths[0].entirePath = [[y1, x1], [y2, x2]];
+        }
+      } catch (e) {
+        // Arrow failure should not count as badge/text drawing error.
+      }
     }
   }
 
