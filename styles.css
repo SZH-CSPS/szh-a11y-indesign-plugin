@@ -1,10 +1,10 @@
 /*
  * styles.css
- * ----------
- * Panel styles for the Reading Order Preview UXP plugin.
- * Uses CSS custom properties for InDesign theme compatibility.
+ * ==========
+ * Panel styles for the SZH-CSPS A11Y InDesign Plugin (UXP).
+ * Uses CSS custom properties for InDesign light/dark theme compatibility.
  *
- * Copyright (C) 2025 SZH/CSPS — Swiss Centre for Special Needs Education
+ * Copyright (C) 2025-2026 SZH/CSPS — Swiss Centre for Special Needs Education
  * Licensed under GNU GPL v3 — https://www.gnu.org/licenses/
  */
 
@@ -18,6 +18,11 @@
   padding: 0;
 }
 
+/* The panel content can exceed the panel height: let the body scroll. */
+html, body {
+  height: 100%;
+}
+
 body {
   font-family: "Adobe Clean", -apple-system, BlinkMacSystemFont, "Segoe UI",
                Helvetica, Arial, sans-serif;
@@ -26,27 +31,11 @@ body {
   background: var(--uxp-host-background-color, #2b2b2b);
   padding: 0;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
-/* ─── Panel header ──────────────────────────────────────────────────────────── */
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--uxp-host-border-color, #444);
-  background: var(--uxp-host-background-color, #323232);
-}
-
-.panel-title {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--uxp-host-text-color, #d0d0d0);
-  opacity: 0.85;
-}
+/* No panel header: the panel tab shows the title, and position:sticky
+   renders as a floating box in InDesign UXP. */
 
 /* ─── Sections ──────────────────────────────────────────────────────────────── */
 
@@ -72,6 +61,13 @@ body {
   margin-bottom: 6px;
 }
 
+.preview-page-label {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: none;
+  opacity: 0.9;
+}
+
 .btn-collapse {
   background: transparent;
   border: 1px solid var(--uxp-host-border-color, #555);
@@ -89,8 +85,9 @@ body {
   background: rgba(255,255,255,0.08);
 }
 
-#section-thumbnail.collapsed #thumbnail-container,
-#section-thumbnail.collapsed .hint {
+#section-preview.collapsed #thumbnail-container,
+#section-preview.collapsed .mode-list,
+#section-preview.collapsed .hint {
   display: none;
 }
 
@@ -121,20 +118,86 @@ body {
   line-height: 1.5;
 }
 
-/* ─── Thumbnail ─────────────────────────────────────────────────────────────── */
+/* ─── Thumbnail & preview mode switch ───────────────────────────────────────── */
 
 .thumbnail-container {
   width: 100%;
   overflow: hidden;
   border-radius: 3px;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   cursor: default;
 }
 
-.thumbnail-container svg {
-  display: block;
-  width: 100%;
-  height: auto;
+/* Inline message replacing the thumbnail (e.g. no articles defined). */
+.thumb-msg {
+  border: 1px dashed var(--uxp-host-border-color, #555);
+  border-radius: 3px;
+  padding: 18px 10px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--uxp-host-text-color, #aaa);
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+/* Preview mode switch: custom div-based radio rows.
+   Native <button>/<input> widgets get Spectrum styling that overrides our
+   CSS in UXP; plain divs render exactly as styled. The radio dot takes the
+   color of the matching control layer (red = Tag RO, blue = Construction RO). */
+.mode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--uxp-host-text-color, #ccc);
+}
+
+.mode-option:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.mode-option.active {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--uxp-host-border-color, #555);
+  font-weight: 600;
+}
+
+/* The radio circle: thin gray ring when off, thick colored ring when on. */
+.mode-radio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--uxp-host-border-color, #888);
+  flex: none;
+}
+
+.mode-option.active .mode-radio {
+  border-width: 4px;
+}
+
+.mode-tag.active .mode-radio {
+  border-color: #ff4526;
+}
+
+.mode-construction.active .mode-radio {
+  border-color: #3b8de0;
+}
+
+.mode-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hint {
@@ -181,6 +244,19 @@ body {
   text-overflow: ellipsis;
 }
 
+.nav-alt {
+  font-size: 10px;
+  color: #6fcf8f;
+  margin-top: 2px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.nav-alt.missing {
+  color: #ff6b5b;
+  font-weight: 600;
+}
+
 .nav-hint {
   font-size: 10px;
   color: #4ea8ff;
@@ -191,24 +267,111 @@ body {
 .nav-buttons {
   display: flex;
   gap: 6px;
+  margin-bottom: 7px;
 }
 
-/* ─── Layer section ─────────────────────────────────────────────────────────── */
+/* ─── Button stacks (fast / artifacts sections) ─────────────────────────────── */
 
-.layer-buttons {
+.btn-stack {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.fast-buttons {
+/* Long labels (e.g. the experimental align button) wrap onto two lines
+   instead of being clipped in narrow panels. */
+.btn-stack .btn {
+  white-space: normal;
+  height: auto;
+}
+
+.hint-after {
+  margin-top: 6px;
+}
+
+.hint-intro {
+  margin-bottom: 7px;
+}
+
+/* ─── Control layer scope toggle (active page / all pages) ──────────────────── */
+
+.scope-list {
   display: flex;
-  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.scope-option {
+  flex: 1;
+  font-size: 10px;
+  padding: 4px 6px;
+}
+
+/* Scope radios use the neutral accent (the red/blue dots belong to the
+   Tag RO / Construction RO color code). */
+.scope-option.active .mode-radio {
+  border-color: #0078d4;
+}
+
+/* ─── Control layer rows: "label  [Show][Clear]" ────────────────────────────── */
+
+.overlay-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 6px;
+  margin-bottom: 6px;
+}
+
+.row-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  flex: 1;
+  min-width: 0; /* allows the label to shrink and ellipsize */
+}
+
+.row-label .label-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-actions {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+/* Color legend dots — same colors as the in-document control layers. */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dot-tag {
+  background: #ff4526;
+}
+
+.dot-construction {
+  background: #3b8de0;
+}
+
+/* Two-class selector: must win over the width:100% of .btn-primary/.btn-nav
+   declared later in this file. */
+.row-actions .btn-small {
+  width: auto;
+  flex: none;
+  padding: 4px 9px;
+  font-size: 10px;
 }
 
 /* ─── Buttons ───────────────────────────────────────────────────────────────── */
 
+/* Native <button> styling (header icon buttons only). */
 button {
   cursor: pointer;
   font-family: inherit;
@@ -225,20 +388,115 @@ button:disabled {
   cursor: default;
 }
 
-/* Icon button (refresh) */
-.btn-icon {
-  background: transparent;
-  border-color: transparent;
-  color: var(--uxp-host-text-color, #ccc);
-  padding: 4px 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Div-based action buttons (role="button"): UXP renders native <button>
+   widgets with Spectrum styling that ignores width/wrap/padding CSS — long
+   labels were clipped. Divs render exactly as styled and wrap naturally. */
+.btn {
+  display: block;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.35;
   border-radius: 3px;
+  border: 1px solid transparent;
+  padding: 5px 10px;
+  text-align: center;
+  user-select: none;
+  transition: opacity 0.12s, background 0.12s;
 }
 
-.btn-icon:hover:not(:disabled) {
-  background: rgba(255,255,255,0.1);
+/* Disabled state for div buttons (toggled as a class by main.js).
+   pointer-events:none also suppresses :hover styling. */
+.btn.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: default;
+}
+
+/* ─── Custom tooltips (ⓘ icon + positioned bubble) ──────────────────────────── */
+
+/* The ⓘ icon injected at the end of each control with a tooltip.
+   Solid accent fill so it reads clearly on grey buttons in both themes. */
+.info-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  background: #1473e6;
+  color: #fff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  display: inline-block;
+  flex: none;
+  cursor: help;
+  opacity: 0.9;
+}
+
+.info-dot:hover {
+  opacity: 1;
+}
+
+/* On blue primary buttons the blue dot would vanish: invert it. */
+.btn-primary .info-dot {
+  background: #fff;
+  color: #1473e6;
+}
+
+/* Section-header tooltip icon (e.g. control layers): inline after the title. */
+.section-header .info-dot {
+  margin-left: 6px;
+  vertical-align: -2px;
+}
+
+/* Wide buttons: icon pinned to the right edge, label keeps its centering. */
+.btn {
+  position: relative;
+}
+
+.btn.has-tip {
+  padding-right: 26px;
+}
+
+.btn .info-dot {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  margin-top: -8px;
+}
+
+/* Small row buttons (Show/Clear): inline icon after the label. */
+.btn-small .info-dot {
+  position: static;
+  margin-top: 0;
+  margin-left: 4px;
+  vertical-align: -2px;
+}
+
+.btn-small.has-tip {
+  padding-right: 9px;
+}
+
+/* Radio rows (mode/scope): icon pushed to the right end of the row. */
+.mode-option .info-dot {
+  margin-left: auto;
+}
+
+/* The bubble itself: fixed positioning (viewport coordinates, immune to the
+   panel scroll), readable size, never under the cursor. */
+.rop-tooltip {
+  position: fixed;
+  z-index: 99;
+  max-width: 240px;
+  background: #1c1c1c;
+  color: #e8e8e8;
+  border: 1px solid #5a5a5a;
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  pointer-events: none;
 }
 
 /* Navigation ← → */
@@ -247,6 +505,8 @@ button:disabled {
   background: var(--uxp-host-background-color, #3a3a3a);
   border-color: var(--uxp-host-border-color, #555);
   color: var(--uxp-host-text-color, #ddd);
+  width: 100%;
+  text-align: center;
 }
 
 .btn-nav:hover:not(:disabled) {
@@ -266,6 +526,11 @@ button:disabled {
   background: #006cc1;
 }
 
+/* Experimental action: dashed border as a visual caution */
+.btn-experimental {
+  border-style: dashed;
+}
+
 /* Danger action */
 .btn-danger {
   background: transparent;
@@ -279,15 +544,102 @@ button:disabled {
   background: rgba(196, 43, 28, 0.15);
 }
 
-/* Secondary (used in dialog) */
-.btn-secondary {
-  background: transparent;
-  border-color: var(--uxp-host-border-color, #555);
-  color: var(--uxp-host-text-color, #ccc);
+/* ─── Inline alt text editor ────────────────────────────────────────────────── */
+
+.alt-editor {
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid var(--uxp-host-border-color, #555);
+  border-radius: 3px;
+  background: var(--uxp-host-background-color, #262626);
 }
 
-.btn-secondary:hover:not(:disabled) {
-  background: rgba(255,255,255,0.08);
+.alt-editor-target {
+  font-size: 10px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--uxp-host-text-color, #ccc);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alt-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--uxp-host-text-color, #e0e0e0);
+  background: var(--uxp-host-background-color, #1f1f1f);
+  border: 1px solid var(--uxp-host-border-color, #555);
+  border-radius: 3px;
+  padding: 5px 6px;
+  resize: vertical;
+  margin-bottom: 6px;
+}
+
+.alt-editor-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+/* The save/cancel pair reuses .btn-small sizing. */
+.alt-editor-buttons .btn-small {
+  width: auto;
+  flex: none;
+  padding: 4px 9px;
+  font-size: 10px;
+}
+
+/* ─── Busy state (long actions: overlay drawing, etc.) ──────────────────────── */
+
+body.busy {
+  cursor: progress;
+}
+
+/* Buttons are disabled programmatically; the div-based controls need their
+   own click shield. */
+.busy .mode-option,
+.busy .btn,
+.busy .lang-select {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* ─── About section ─────────────────────────────────────────────────────────── */
+
+.about-body {
+  margin-top: 2px;
+  line-height: 1.55;
+  opacity: 0.8;
+}
+
+/* ─── Plugin language section ───────────────────────────────────────────────── */
+
+.lang-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lang-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--uxp-host-text-color, #aaa);
+  opacity: 0.7;
+}
+
+.lang-select {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--uxp-host-text-color, #ddd);
+  background: var(--uxp-host-background-color, #3a3a3a);
+  border: 1px solid var(--uxp-host-border-color, #555);
+  border-radius: 3px;
+  padding: 3px 6px;
 }
 
 /* ─── Status bar ────────────────────────────────────────────────────────────── */
@@ -298,36 +650,11 @@ button:disabled {
   border-top: 1px solid var(--uxp-host-border-color, #444);
   color: #7ecf7e;
   line-height: 1.4;
+  background: var(--uxp-host-background-color, #2b2b2b);
+  /* No position:sticky — InDesign UXP renders sticky elements as floating
+     boxes (the old header bug). */
 }
 
 .status.error {
   color: #ff6b5b;
-}
-
-/* ─── Confirm dialog ────────────────────────────────────────────────────────── */
-
-.confirm-dialog {
-  background: var(--uxp-host-background-color, #2d2d2d);
-  border: 1px solid var(--uxp-host-border-color, #555);
-  border-radius: 5px;
-  padding: 16px;
-  min-width: 220px;
-  max-width: 260px;
-  color: var(--uxp-host-text-color, #e0e0e0);
-}
-
-.confirm-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-.confirm-message {
-  font-size: 12px;
-  line-height: 1.5;
-  margin-bottom: 14px;
-}
-
-.confirm-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }

@@ -1,0 +1,47 @@
+# Builds the distributable .ccx package — no Adobe tooling required:
+# a .ccx is a plain ZIP of the plugin files with manifest.json at its root
+# (the same thing build-ccx.ps1 produces locally).
+#
+# Triggers:
+#   - every push of a tag "v*" (e.g. v1.9.0): builds AND attaches the .ccx
+#     to a GitHub Release for that tag
+#   - manual run (workflow_dispatch): builds and uploads the .ccx as a
+#     workflow artifact
+name: Build CCX
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed to create the release on tag builds
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read plugin version from manifest
+        id: ver
+        run: echo "version=$(jq -r .version manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Build .ccx (plain zip, forward-slash entries)
+        run: |
+          mkdir -p dist
+          zip -r "dist/szh-a11y-indesign-plugin_${{ steps.ver.outputs.version }}.ccx" \
+            manifest.json index.html styles.css main.js src
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: szh-a11y-indesign-plugin_${{ steps.ver.outputs.version }}
+          path: dist/*.ccx
+
+      - name: Attach to GitHub Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.ccx
+          generate_release_notes: true

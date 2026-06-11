@@ -1,37 +1,37 @@
 <!DOCTYPE html>
 <!--
   index.html
-  ----------
-  Panel UI for the Reading Order Preview UXP plugin.
+  ==========
+  Panel layout for the SZH-CSPS A11Y InDesign Plugin (UXP).
 
-  Copyright (C) 2025 SZH/CSPS — Swiss Centre for Special Needs Education
+  All visible texts carry a data-i18n key and tooltips a data-i18n-title key,
+  localized at runtime (see src/strings.js); inline texts are the English
+  fallbacks.
+
+  Action "buttons" are DIVs with role="button": native <button> widgets get
+  Spectrum styling in UXP that ignores width/wrap/padding CSS (long labels
+  were clipped). Divs render exactly as styled. Only the two header icon
+  buttons remain native.
+
+  Copyright (C) 2025-2026 SZH/CSPS — Swiss Centre for Special Needs Education
   Licensed under GNU GPL v3 — https://www.gnu.org/licenses/
 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SZH-CSPS Accessibility Toolbox</title>
+  <title>SZH-CSPS A11Y InDesign Plugin</title>
   <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       HEADER
-  ══════════════════════════════════════════════════════════════════════════ -->
-  <header class="panel-header">
-    <span class="panel-title" data-i18n="panelTitle">SZH-CSPS Accessibility Toolbox</span>
-    <button id="btn-refresh" class="btn-icon" data-i18n-title="btnRefresh" title="Refresh">
-      <!-- Refresh icon (SVG) -->
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.06-3.39L10 6h5V1l-1.35 1.35z"/>
-      </svg>
-    </button>
-  </header>
+  <!-- No header: the panel tab already shows the title, and position:sticky
+       renders as a floating box in InDesign UXP. Refresh is automatic
+       (page watcher + refresh after every action). -->
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       EMPTY STATE (shown when no doc / no articles)
-  ══════════════════════════════════════════════════════════════════════════ -->
+       EMPTY STATE (no document / no active page)
+  ════════════════════════════════════════════════════════════════════════════ -->
   <div id="empty-state" class="empty-state">
     <svg class="empty-icon" viewBox="0 0 48 48" fill="none">
       <rect x="8" y="6" width="32" height="36" rx="3" stroke="currentColor" stroke-width="2"/>
@@ -43,103 +43,281 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       SECTION A — PAGE THUMBNAIL
-  ══════════════════════════════════════════════════════════════════════════ -->
-  <section id="section-thumbnail" class="panel-section">
+       SECTION A — PAGE PREVIEW (Tag RO / Construction RO)
+  ════════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-preview" class="panel-section">
     <div class="section-header">
-      <span data-i18n="thumbnailTitle">Page preview</span>
-      <button id="btn-toggle-preview" class="btn-collapse" data-i18n-title="thumbnailToggleTitle" title="Hide preview" aria-expanded="true">▾</button>
+      <span data-i18n="previewTitle">Page preview</span>
+      <span id="preview-page-label" class="preview-page-label"></span>
+      <button id="btn-toggle-preview" class="btn-collapse"
+              data-i18n-title="previewToggleTitle" title="Hide/show preview"
+              aria-expanded="true">▾</button>
     </div>
+
     <div id="thumbnail-container" class="thumbnail-container">
-      <!-- SVG is injected here by ui.js -->
+      <!-- thumbnail HTML injected by main.js -->
     </div>
-    <p class="hint" data-i18n="thumbnailHint">
-      Numbers show the Articles reading order.
+
+    <!-- Preview mode switch. Colors match the in-document control layers:
+         red = Tag RO, blue = Construction RO. -->
+    <div class="mode-list" role="radiogroup">
+      <div id="btn-mode-tag" class="mode-option mode-tag active" role="radio"
+           aria-checked="true" tabindex="0" data-i18n-title="tipPreviewTag">
+        <span class="mode-radio"></span>
+        <span class="mode-label" data-i18n="btnPreviewTag">Tag RO (articles)</span>
+      </div>
+      <div id="btn-mode-construction" class="mode-option mode-construction" role="radio"
+           aria-checked="false" tabindex="0" data-i18n-title="tipPreviewConstruction">
+        <span class="mode-radio"></span>
+        <span class="mode-label" data-i18n="btnPreviewConstruction">Construction RO (layers)</span>
+      </div>
+    </div>
+
+    <p id="preview-hint" class="hint">
+      Numbers follow the Articles panel order (Tag RO). Artifacts are hidden.
     </p>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
        SECTION B — SEQUENTIAL NAVIGATION
-  ══════════════════════════════════════════════════════════════════════════ -->
+  ════════════════════════════════════════════════════════════════════════════ -->
   <section id="section-nav" class="panel-section">
     <div class="section-header">
       <span data-i18n="navTitle">Navigate</span>
       <span id="nav-counter" class="nav-counter">— / —</span>
     </div>
     <div class="nav-buttons">
-      <button id="btn-prev" class="btn-nav" disabled data-i18n="navPrev">← Previous</button>
-      <button id="btn-next" class="btn-nav" disabled data-i18n="navNext">Next →</button>
+      <div id="btn-prev" class="btn btn-nav disabled" role="button" tabindex="0"
+           data-i18n="navPrev" data-i18n-title="tipNavPrev">← Previous</div>
+      <div id="btn-next" class="btn btn-nav disabled" role="button" tabindex="0"
+           data-i18n="navNext" data-i18n-title="tipNavNext">Next →</div>
     </div>
     <div class="nav-info-box">
       <div id="nav-info"    class="nav-item-name">—</div>
       <div id="nav-article" class="nav-article-name"></div>
+      <div id="nav-alt"     class="nav-alt" style="display:none;"></div>
       <div id="nav-hint"    class="nav-hint"></div>
     </div>
-
-
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       SECTION C — LAYER OVERLAY
-  ══════════════════════════════════════════════════════════════════════════ -->
-  <section id="section-layer" class="panel-section">
+       SECTION C — IN-DOCUMENT CONTROL LAYERS
+  ════════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-overlay" class="panel-section">
     <div class="section-header">
-      <span data-i18n="layerTitle">Reading order layer</span>
+      <!-- One section-level tooltip explains the whole feature; the buttons
+           inside stay clean. -->
+      <span data-i18n="overlayTitle" data-i18n-title="tipOverlaySection">Control layers (in document)</span>
     </div>
-    <div class="layer-buttons">
-      <button id="btn-draw-layer" class="btn-primary" data-i18n="btnDrawLayer">
-        Draw reading order on layer
-      </button>
-      <button id="btn-delete-layer" class="btn-danger" data-i18n="btnDeleteLayer">
-        Delete reading order layer
-      </button>
+
+    <!-- Drawing scope: active page (fast, default) or the whole document.
+         Applies to all four control layers. -->
+    <div class="scope-list" role="radiogroup">
+      <div id="btn-scope-active" class="mode-option scope-option active" role="radio"
+           aria-checked="true" tabindex="0">
+        <span class="mode-radio"></span>
+        <span class="mode-label" data-i18n="scopeActivePage">Active page</span>
+      </div>
+      <div id="btn-scope-all" class="mode-option scope-option" role="radio"
+           aria-checked="false" tabindex="0">
+        <span class="mode-radio"></span>
+        <span class="mode-label" data-i18n="scopeAllPages">All pages (slower)</span>
+      </div>
+    </div>
+
+    <div class="overlay-row">
+      <span class="row-label">
+        <span class="dot dot-tag"></span>
+        <span class="label-text" data-i18n="btnPreviewTag">Tag RO (articles)</span>
+      </span>
+      <span class="row-actions">
+        <div id="btn-draw-tag-ro" class="btn btn-small btn-primary" role="button" tabindex="0"
+             data-i18n="btnShow">Show</div>
+        <div id="btn-delete-tag-ro" class="btn btn-small btn-nav" role="button" tabindex="0"
+             data-i18n="btnClear">Clear</div>
+      </span>
+    </div>
+
+    <div class="overlay-row">
+      <span class="row-label">
+        <span class="dot dot-construction"></span>
+        <span class="label-text" data-i18n="btnPreviewConstruction">Construction RO (layers)</span>
+      </span>
+      <span class="row-actions">
+        <div id="btn-draw-construction-ro" class="btn btn-small btn-primary" role="button" tabindex="0"
+             data-i18n="btnShow">Show</div>
+        <div id="btn-delete-construction-ro" class="btn btn-small btn-nav" role="button" tabindex="0"
+             data-i18n="btnClear">Clear</div>
+      </span>
     </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       SECTION D — FAST READING TOOLS
-  ══════════════════════════════════════════════════════════════════════════ -->
+       SECTION D — REORDER & GROUPS
+  ════════════════════════════════════════════════════════════════════════════ -->
   <section id="section-fast" class="panel-section">
     <div class="section-header">
-      <span data-i18n="fastTitle">Fast reading Article/layer order</span>
+      <span data-i18n="fastTitle">Reorder &amp; groups</span>
     </div>
-    <div class="fast-buttons">
-      <button id="btn-fast-reorder" class="btn-primary" data-i18n="btnFastReorder">
-        Reorder selected (bottom-up)
-      </button>
-      <button id="btn-fast-save-groups" class="btn-nav" data-i18n="btnFastSaveGroups">
-        Save groups
-      </button>
-      <button id="btn-fast-ungroup-all" class="btn-nav" data-i18n="btnFastUngroupAll">
-        Ungroup all
-      </button>
-      <button id="btn-fast-regroup" class="btn-nav" data-i18n="btnFastRegroup">
-        Re-group based on save
-      </button>
+
+    <!-- Why ungrouping exists, stated upfront. -->
+    <p class="hint hint-intro" data-i18n="fastIntro">
+      A group is a single block in the reading order: to reorder elements
+      inside a group, ungroup first. Buttons 1 and 4 save and then rebuild
+      the groups.
+    </p>
+
+    <!-- Workflow order: 1 save → 2 ungroup → 3 reorder → 4 re-group. -->
+    <div class="btn-stack">
+      <div id="btn-fast-save-groups" class="btn btn-nav" role="button" tabindex="0"
+           data-i18n="btnFastSaveGroups" data-i18n-title="tipSaveGroups">
+        1) Save groups
+      </div>
+      <div id="btn-fast-ungroup-all" class="btn btn-nav" role="button" tabindex="0"
+           data-i18n="btnFastUngroupAll" data-i18n-title="tipUngroupAll">
+        2) Ungroup all
+      </div>
+      <div id="btn-fast-reorder" class="btn btn-primary" role="button" tabindex="0"
+           data-i18n="btnFastReorder" data-i18n-title="tipFastReorder">
+        3) Reorder selection
+      </div>
+      <div id="btn-fast-regroup" class="btn btn-nav" role="button" tabindex="0"
+           data-i18n="btnFastRegroup" data-i18n-title="tipRegroup">
+        4) Re-group from save
+      </div>
+      <div id="btn-align-zorder" class="btn btn-nav btn-experimental" role="button" tabindex="0"
+           data-i18n="btnAlignZOrder" data-i18n-title="tipAlignZOrder">
+        Align Construction RO to Tag RO (experimental)
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION E — ARTIFACTS (tagging)
+  ════════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-artifacts" class="panel-section">
+    <div class="section-header">
+      <span data-i18n="artifactTitle">Artifacts</span>
+    </div>
+    <div class="btn-stack">
+      <div id="btn-set-artifact" class="btn btn-primary" role="button" tabindex="0"
+           data-i18n="btnSetArtifact" data-i18n-title="tipSetArtifact">
+        Set as artifact
+      </div>
+      <div id="btn-unset-artifact" class="btn btn-nav" role="button" tabindex="0"
+           data-i18n="btnUnsetArtifact" data-i18n-title="tipUnsetArtifact">
+        Remove artifact tag
+      </div>
+    </div>
+    <p class="hint hint-after" data-i18n="artifactHint">
+      Artifacts are excluded from every reading order and hidden in the previews.
+    </p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION F — ARTIFACT PREVIEW (visibility & layer)
+  ════════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-artifact-preview" class="panel-section">
+    <div class="section-header">
+      <span data-i18n="artifactPreviewTitle">Artifact preview</span>
+    </div>
+    <div class="btn-stack">
+      <div id="btn-toggle-artifacts" class="btn btn-primary" role="button" tabindex="0"
+           data-i18n="btnToggleArtifacts" data-i18n-title="tipToggleArtifacts">
+        Hide/show artifacts
+      </div>
+      <div id="btn-move-artifacts" class="btn btn-nav" role="button" tabindex="0"
+           data-i18n="btnMoveArtifacts" data-i18n-title="tipMoveArtifacts">
+        Move artifacts to [Artifacts] layer
+      </div>
+      <div id="btn-restore-artifacts" class="btn btn-nav" role="button" tabindex="0"
+           data-i18n="btnRestoreArtifacts" data-i18n-title="tipRestoreArtifacts">
+        Restore artifacts to original layers
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION G — ALT TEXT
+  ════════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-alttext" class="panel-section">
+    <div class="section-header">
+      <span data-i18n="altTextTitle">Alt text</span>
+    </div>
+    <div class="btn-stack">
+      <div id="btn-edit-alttext" class="btn btn-primary" role="button" tabindex="0"
+           data-i18n="btnEditAltText" data-i18n-title="tipEditAltText">
+        Edit alt text
+      </div>
+      <div id="btn-toggle-alttext" class="btn btn-nav" role="button" tabindex="0"
+           data-i18n="btnShowAltText" data-i18n-title="tipToggleAltText">
+        Show alt texts
+      </div>
+    </div>
+
+    <!-- Inline alt text editor (shown by the "Edit alt text" button).
+         Editing happens here in the panel — no floating dialog. -->
+    <div id="alt-editor" class="alt-editor" style="display:none;">
+      <div id="alt-editor-target" class="alt-editor-target"></div>
+      <textarea id="alt-input" class="alt-input" rows="3"></textarea>
+      <div class="alt-editor-buttons">
+        <div id="btn-alt-save" class="btn btn-small btn-primary" role="button" tabindex="0"
+             data-i18n="altEditSave">Save</div>
+        <div id="btn-alt-cancel" class="btn btn-small btn-nav" role="button" tabindex="0"
+             data-i18n="altEditCancel">Cancel</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION H — HTML MARKUP
+  ════════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-markup" class="panel-section">
+    <div class="section-header">
+      <span data-i18n="markupTitle">HTML markup</span>
+    </div>
+    <div class="btn-stack">
+      <div id="btn-toggle-markup" class="btn btn-primary" role="button" tabindex="0"
+           data-i18n="btnShowMarkup" data-i18n-title="tipToggleMarkup">
+        Show HTML markup
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION I — ABOUT (collapsed by default)
+  ════════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-about" class="panel-section">
+    <div class="section-header">
+      <span data-i18n="aboutTitle">About</span>
+      <button id="btn-toggle-about" class="btn-collapse" aria-expanded="false">▸</button>
+    </div>
+    <p id="about-body" class="hint about-body" style="display:none;" data-i18n="aboutText">
+      This tool helps build and verify the two reading orders of an accessible
+      PDF: the Tag RO (Articles panel) and the Construction RO (layer stack).
+    </p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION J — PLUGIN LANGUAGE
+  ════════════════════════════════════════════════════════════════════════════ -->
+  <section id="section-lang" class="panel-section">
+    <div class="lang-row">
+      <span class="lang-label" data-i18n="langTitle">Plugin language</span>
+      <select id="lang-select" class="lang-select">
+        <option value="auto" data-i18n="langAuto">Auto (InDesign language)</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="it">Italiano</option>
+      </select>
     </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
        STATUS BAR
-  ══════════════════════════════════════════════════════════════════════════ -->
+  ════════════════════════════════════════════════════════════════════════════ -->
   <div id="status-msg" class="status" style="display:none;"></div>
-
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       CONFIRM DIALOG (used for layer deletion)
-  ══════════════════════════════════════════════════════════════════════════ -->
-  <dialog id="confirm-dialog" class="confirm-dialog">
-    <p id="confirm-message" class="confirm-message"></p>
-    <div class="confirm-buttons">
-      <button id="confirm-cancel" class="btn-secondary"
-              onclick="document.getElementById('confirm-dialog').close('cancel')">
-        Cancel
-      </button>
-      <button id="confirm-ok" class="btn-danger"
-              onclick="document.getElementById('confirm-dialog').close('ok')">
-        Delete
-      </button>
-    </div>
-  </dialog>
 
   <script src="main.js"></script>
 

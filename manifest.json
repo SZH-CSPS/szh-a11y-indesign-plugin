@@ -1,10 +1,10 @@
 {
   "manifestVersion": 5,
-  "id": "ch.csps.reading-order-preview",
-  "name": "SZH-CSPS Accessibility Toolbox",
+  "id": "ch.csps.szh-a11y-indesign-plugin",
+  "name": "SZH-CSPS A11Y InDesign Plugin",
   "version": "1.0.0",
   "main": "index.html",
-  "description": "Visualize and navigate the Articles panel reading order. Developed by SZH/CSPS.",
+  "description": "Build and verify the two reading orders (Tag RO / Construction RO) of accessible PDFs. Developed by SZH/CSPS.",
   "publisher": "SZH/CSPS — Swiss Centre for Special Needs Education",
 
   "host": [
@@ -19,10 +19,11 @@
       "type": "panel",
       "id": "readingOrderPanel",
       "label": {
-        "default": "SZH-CSPS Accessibility Toolbox"
+        "default": "SZH-CSPS A11Y InDesign Plugin"
       },
       "minimumSize": { "width": 260, "height": 400 },
-      "preferredSize": { "width": 320, "height": 600 },
+      "preferredDockedSize": { "width": 448, "height": 700 },
+      "preferredFloatingSize": { "width": 448, "height": 700 },
       "maximumSize": { "width": 800, "height": 2000 }
     }
   ],
