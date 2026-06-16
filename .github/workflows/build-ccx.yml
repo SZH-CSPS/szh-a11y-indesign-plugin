@@ -1,9 +1,15 @@
-# Builds the distributable .ccx package — no Adobe tooling required:
-# a .ccx is a plain ZIP of the plugin files with manifest.json at its root
-# (the same thing build-ccx.ps1 produces locally).
+# Builds the distributable .ccx package using Adobe's official UXP tooling.
+#
+# IMPORTANT: a .ccx is NOT just a renamed zip. A plain "zip -r ... .ccx"
+# produces an archive that the Unified Plugin Installer Agent (UPIA) rejects
+# (errors like -267 / -4), even though the same files load fine as an
+# unpacked folder in the UXP Developer Tool. Only a package produced by the
+# official tooling (UDT "Package" action, or `uxp plugin package` from
+# @adobe/uxp-devtools-cli) is installable. This workflow uses the CLI so the
+# build is reproducible and host-independent (no running InDesign required).
 #
 # Triggers:
-#   - every push of a tag "v*" (e.g. v1.9.0): builds AND attaches the .ccx
+#   - every push of a tag "v*" (e.g. v1.0.1): builds AND attaches the .ccx
 #     to a GitHub Release for that tag
 #   - manual run (workflow_dispatch): builds and uploads the .ccx as a
 #     workflow artifact
@@ -23,15 +29,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Read plugin version from manifest
         id: ver
         run: echo "version=$(jq -r .version manifest.json)" >> "$GITHUB_OUTPUT"
 
-      - name: Build .ccx (plain zip, forward-slash entries)
+      - name: Install UXP devtools CLI
+        run: npm install -g @adobe/uxp-devtools-cli
+
+      - name: Show package command help (reveals exact flags if they change)
+        run: uxp plugin package --help || true
+
+      - name: Build .ccx with the official UXP packager
         run: |
           mkdir -p dist
-          zip -r "dist/szh-a11y-indesign-plugin_${{ steps.ver.outputs.version }}.ccx" \
-            manifest.json index.html styles.css main.js src
+          uxp plugin package \
+            --manifest manifest.json \
+            --outputPath dist
+          ls -l dist
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

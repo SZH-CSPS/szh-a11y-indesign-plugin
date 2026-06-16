@@ -2,7 +2,7 @@
   "manifestVersion": 5,
   "id": "ch.csps.szh-a11y-indesign-plugin",
   "name": "SZH-CSPS A11Y InDesign Plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.html",
   "description": "Build and verify the two reading orders (Tag RO / Construction RO) of accessible PDFs. Developed by SZH/CSPS.",
   "publisher": "SZH/CSPS — Swiss Centre for Special Needs Education",
@@ -29,6 +29,7 @@
   ],
 
   "requiredPermissions": {
-    "allow": "all"
+    "localFileSystem": "fullAccess",
+    "network": { "domains": "all" }
   }
 }

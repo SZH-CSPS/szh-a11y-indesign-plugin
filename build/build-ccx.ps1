@@ -1,11 +1,15 @@
 # build/build-ccx.ps1
 # ===================
-# Packages the plugin into dist/szh-a11y-indesign-plugin_<version>.ccx.
+# WARNING — this produces a PLAIN ZIP, which the Unified Plugin Installer
+# Agent (UPIA) does NOT accept: double-click / UPIA install fails with errors
+# like -267 / -4. A real .ccx must be produced by Adobe's official tooling.
+# Use ONE of these instead:
+#   * UXP Developer Tool (GUI): plugin -> "..." Actions menu -> Package
+#   * UXP devtools CLI: `uxp plugin package --manifest manifest.json --outputPath dist`
+#   * The GitHub Action (.github/workflows/build-ccx.yml), which now uses the CLI
 #
-# A .ccx is a plain ZIP of the plugin files (manifest.json at the archive
-# root). Entries are written with forward slashes so the archive installs
-# correctly on both Windows and macOS. No Adobe tooling required — the
-# GitHub Action (.github/workflows/build-ccx.yml) builds the same package.
+# This script is kept only for quick inspection of the file set that ships;
+# its output is fine for loading an UNPACKED folder in UDT, but not for UPIA.
 #
 # Usage:  powershell -ExecutionPolicy Bypass -File .\build\build-ccx.ps1
 
