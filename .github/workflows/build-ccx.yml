@@ -38,7 +38,11 @@ jobs:
         run: echo "version=$(jq -r .version manifest.json)" >> "$GITHUB_OUTPUT"
 
       - name: Install UXP devtools CLI
-        run: npm install -g @adobe/uxp-devtools-cli
+        # --ignore-scripts skips the broken postinstall (devtools_setup.js fails
+        # with "Cannot find module 'tar'"). That step only fetches the native
+        # service helper used by load/debug; `plugin package` is pure JS and
+        # does not need it. See adobe-uxp/devtools-cli issues #9 / PR #10.
+        run: npm install -g @adobe/uxp-devtools-cli --ignore-scripts
 
       - name: Show package command help (reveals exact flags if they change)
         run: uxp plugin package --help || true
